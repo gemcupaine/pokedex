@@ -101,25 +101,22 @@ function RetryButton({ onPress }: { onPress: () => void }) {
 function PokemonRow({ item, palette }: { item: PokemonListItem; palette: Palette }) {
   return (
     <Link href={`/pokemon/${item.id}`} asChild>
-      <Pressable
-        style={({ pressed }) => [
-          styles.row,
-          { backgroundColor: palette.card },
-          pressed && styles.pressed,
-        ]}
-      >
-        <Image
-          source={getSpriteUrl(item.id)}
-          style={styles.sprite}
-          contentFit="contain"
-          recyclingKey={String(item.id)}
-          transition={150}
-        />
-        <View style={styles.rowText}>
-          <Text style={[styles.name, { color: palette.text }]}>{formatName(item.name)}</Text>
-          <Text style={[styles.secondary, { color: palette.secondaryText }]}>
-            {formatDexNumber(item.id)}
-          </Text>
+      <Pressable style={({ pressed }) => pressed && styles.pressed}>
+        {/* Layout lives on this View: Link's asChild doesn't reliably keep a function style. */}
+        <View style={[styles.row, { backgroundColor: palette.card }]}>
+          <Image
+            source={getSpriteUrl(item.id)}
+            style={styles.sprite}
+            contentFit="contain"
+            recyclingKey={String(item.id)}
+            transition={150}
+          />
+          <View style={styles.rowText}>
+            <Text style={[styles.name, { color: palette.text }]}>{formatName(item.name)}</Text>
+            <Text style={[styles.secondary, { color: palette.secondaryText }]}>
+              {formatDexNumber(item.id)}
+            </Text>
+          </View>
         </View>
       </Pressable>
     </Link>
@@ -141,15 +138,15 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.md,
     padding: Spacing.sm,
-    paddingRight: Spacing.lg,
     borderRadius: Radius.md,
     borderCurve: "continuous",
   },
   pressed: { opacity: 0.7 },
   sprite: { width: 64, height: 64 },
-  rowText: { flex: 1, gap: 2 },
+  rowText: { gap: 2 },
   name: Typography.headline,
   secondary: { fontSize: 15, ...Typography.numeric },
   footer: { paddingVertical: Spacing.xl, alignItems: "center", gap: Spacing.md },
