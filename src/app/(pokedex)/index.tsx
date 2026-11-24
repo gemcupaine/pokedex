@@ -1,34 +1,164 @@
+import { Image } from "expo-image";
 import { Link } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { Colors } from "@/constants/theme";
+import { Colors, Radius, Spacing, Typography, type Palette } from "@/constants/theme";
+import { useTheme } from "@/hooks/use-theme";
+import {
+  formatDexNumber,
+  formatName,
+  getSpriteUrl,
+  usePokemonList,
+} from "@/lib/pokeapi";
+import type { PokemonListItem } from "@/types/pokemon";
 
 export default function PokedexScreen() {
+  const { pokemon, total, hasMore, loading, error, loadMore } = usePokemonList();
+  const { palette } = useTheme();
+  const isEmpty = pokemon.length === 0;
+
   return (
-    <ScrollView
+    <FlatList
       contentInsetAdjustmentBehavior="automatic"
-      style={{ flex: 1 }}
-      contentContainerStyle={styles.content}
+      style={{ flex: 1, backgroundColor: palette.background }}
+      contentContainerStyle={[styles.content, isEmpty && styles.contentEmpty]}
+      data={pokemon}
+      keyExtractor={(item) => String(item.id)}
+      renderItem={({ item }) => <PokemonRow item={item} palette={palette} />}
+      onEndReached={() => {
+        // After an error, wait for the retry button instead of re-requesting on every scroll.
+        if (!error && hasMore) loadMore();
+      }}
+      onEndReachedThreshold={0.5}
+      // First load: full-screen spinner or error.
+      ListEmptyComponent={
+        error ? (
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyTitle, { color: palette.text }]}>
+              Couldn&apos;t load the Pokedex
+            </Text>
+            <Text style={[styles.secondary, styles.centerText, { color: palette.secondaryText }]}>
+              {error}
+            </Text>
+            <RetryButton onPress={loadMore} />
+          </View>
+        ) : loading ? (
+          <View style={styles.emptyState}>
+            <ActivityIndicator size="large" color={Colors.pokedexRed} />
+          </View>
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={[styles.secondary, { color: palette.secondaryText }]}>
+              No Pokemon found.
+            </Text>
+          </View>
+        )
+      }
+      // Later pages: inline error, spinner, or end-of-list marker.
+      ListFooterComponent={
+        isEmpty ? undefined : error ? (
+          <View style={styles.footer}>
+            <Text style={[styles.secondary, styles.centerText, { color: palette.secondaryText }]}>
+              {error}
+            </Text>
+            <RetryButton onPress={loadMore} />
+          </View>
+        ) : loading ? (
+          <View style={styles.footer}>
+            <ActivityIndicator color={Colors.pokedexRed} />
+          </View>
+        ) : !hasMore ? (
+          <View style={styles.footer}>
+            <Text style={[styles.secondary, { color: palette.secondaryText }]}>
+              You&apos;ve seen all {(total ?? pokemon.length).toLocaleString()} Pokemon
+            </Text>
+          </View>
+        ) : undefined
+      }
+    />
+  );
+}
+
+function RetryButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [styles.retry, pressed && styles.pressed]}
     >
-      {/* TODO: temporary button for testing navigation — replace with the Pokemon list */}
-      <Link href="/pokemon/25" asChild>
-        <Pressable style={({ pressed }) => [styles.button, pressed && styles.pressed]}>
-          <Text style={styles.buttonText}>Open Pikachu</Text>
-        </Pressable>
-      </Link>
-    </ScrollView>
+      <Text style={styles.retryText}>Try again</Text>
+    </Pressable>
+  );
+}
+
+function PokemonRow({ item, palette }: { item: PokemonListItem; palette: Palette }) {
+  return (
+    <Link href={`/pokemon/${item.id}`} asChild>
+      <Pressable
+        style={({ pressed }) => [
+          styles.row,
+          { backgroundColor: palette.card },
+          pressed && styles.pressed,
+        ]}
+      >
+        <Image
+          source={getSpriteUrl(item.id)}
+          style={styles.sprite}
+          contentFit="contain"
+          recyclingKey={String(item.id)}
+          transition={150}
+        />
+        <View style={styles.rowText}>
+          <Text style={[styles.name, { color: palette.text }]}>{formatName(item.name)}</Text>
+          <Text style={[styles.secondary, { color: palette.secondaryText }]}>
+            {formatDexNumber(item.id)}
+          </Text>
+        </View>
+      </Pressable>
+    </Link>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16 },
-  button: {
-    backgroundColor: Colors.pokedexRed,
-    borderRadius: 14,
-    borderCurve: "continuous",
-    paddingVertical: 14,
+  content: { padding: Spacing.lg, gap: Spacing.sm },
+  contentEmpty: { flexGrow: 1 },
+  emptyState: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.md,
+    padding: Spacing.xl,
+  },
+  emptyTitle: { ...Typography.title, textAlign: "center" },
+  centerText: { textAlign: "center" },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
+    padding: Spacing.sm,
+    paddingRight: Spacing.lg,
+    borderRadius: Radius.md,
+    borderCurve: "continuous",
   },
   pressed: { opacity: 0.7 },
-  buttonText: { color: "#FFFFFF", fontSize: 17, fontWeight: "600" },
+  sprite: { width: 64, height: 64 },
+  rowText: { flex: 1, gap: 2 },
+  name: Typography.headline,
+  secondary: { fontSize: 15, ...Typography.numeric },
+  footer: { paddingVertical: Spacing.xl, alignItems: "center", gap: Spacing.md },
+  retry: {
+    backgroundColor: Colors.pokedexRed,
+    borderRadius: Radius.sm,
+    borderCurve: "continuous",
+    paddingVertical: 10,
+    paddingHorizontal: Spacing.xl,
+  },
+  retryText: { ...Typography.headline, color: Colors.white },
 });

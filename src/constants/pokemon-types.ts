@@ -27,3 +27,8 @@ export const StatLabels: Record<string, string> = {
   "special-defense": "Sp. Def",
   speed: "Speed",
 };
+
+/** Color for a type name, falling back to neutral grey for unknown types. */
+export function getTypeColor(type: string | undefined, fallback = "#8E8E93"): string {
+  return (type && TypeColors[type]) || fallback;
+}
